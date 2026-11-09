@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>名付け対決ゲーム</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #eceff1; padding: 20px; margin: 0; }
+        .control-panel { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; }
+        .player-controls, .slot-controls { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+        .count-btn { background: #6c757d; color: white; border: none; width: 28px; height: 28px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        #game-area { display: inline-block; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .player-row { display: flex; align-items: center; justify-content: center; margin: 15px 0; background: #f8f9fa; padding: 10px; border-radius: 8px; gap: 10px; border: 2px solid transparent; }
+        .player-row.active-turn { background: #e6f2ff; border-color: #007bff; box-shadow: 0 0 10px rgba(0,123,255,0.2); }
+        .player-name { font-size: 18px; font-weight: bold; width: 120px; border: 1px dashed #ccc; padding: 5px; border-radius: 4px; background: #fff; text-align: center; }
+        .slots { display: flex; gap: 8px; }
+        .slot { width: 45px; height: 45px; border: 2px solid #adb5bd; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; background: white; cursor: pointer; user-select: none; }
+        .slot.allowed { border-color: #007bff; background: #fff; }
+        .pass-btn { background: #ffc107; color: #212529; border: none; padding: 6px 12px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; min-width: 100px; }
+        .pass-btn:disabled { background: #e9ecef; color: #adb5bd; cursor: not-allowed; }
+        .remove-btn { background: #e0e0e0; color: #444; border: none; font-size: 14px; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .center-box { background: #e9ecef; border: 3px solid #495057; border-radius: 10px; padding: 20px; margin: 20px auto; width: 300px; }
+        .drawn-letter { font-size: 48px; font-weight: bold; margin: 10px 0; height: 60px; display: flex; align-items: center; justify-content: center; color: #dc3545; }
+        .action-btn { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin: 5px; }
+        .reset-btn { background: #dc3545; }
+        .add-btn { background: #28a745; }
+        .turn-info { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #007bff; }
+    </style>
+</head>
+<body>
+
+<div class="control-panel">
+    <div class="slot-controls">
+        <span>📝 文字数: </span>
+        <button class="count-btn" onclick="changeSlotCount(-1)">-</button>
+        <span id="slot-count-display">7</span>
+        <button class="count-btn" onclick="changeSlotCount(1)">+</button>
+    </div>
+    <div class="slot-controls">
+        <span>🔄 パス上限: </span>
+        <button class="count-btn" onclick="changeMaxPasses(-1)">-</button>
+        <span id="pass-count-display">2</span>
+        <button class="count-btn" onclick="changeMaxPasses(1)">+</button>
+    </div>
+    <div class="player-controls">
+        <button class="action-btn add-btn" onclick="addPlayer()">👤 追加</button>
+        <button class="action-btn reset-btn" onclick="resetGame()">リセット</button>
+    </div>
+</div>
+
+<div id="game-area">
+    <div class="turn-info" id="turn-display">ゲームを開始してください</div>
+    <div id="players-container"></div>
+    <div class="center-box">
+        <div class="drawn-letter" id="drawn-letter-box">-</div>
+        <button class="action-btn" id="draw-btn" onclick="drawLetter()">文字を引く</button>
+        <div>
+            <button class="action-btn" style="background:#6c757d" id="dakuten-btn" onclick="applyModifier('dakuten')" disabled>濁点</button>
+            <button class="action-btn" style="background:#6c757d" id="small-btn" onclick="applyModifier('small')" disabled>小文字</button>
+            <button class="action-btn" style="background:#6c757d" id="handakuten-btn" onclick="applyModifier('handakuten')" disabled>半濁点</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const letters = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわん";
+    let currentLetter = "";
+    let maxSlots = 7; 
+    let maxPasses = 2; // 現在設定されている最大パス回数
+    let playerNames = ["", "", "", "", ""];
+    let playerBoards = [];
+    let playerPasses = [];
+    let currentTurnIdx = 0;
+
+    function initGame() {
+        const container = document.getElementById('players-container');
+        container.innerHTML = "";
+        
+        const turnDisplay = document.getElementById('turn-display');
+        if (currentLetter) {
+            turnDisplay.innerText = `${playerNames[currentTurnIdx]}さんの番です（文字を配置するかパスしてください）`;
+            document.getElementById('draw-btn').disabled = true;
+        } else {
+            turnDisplay.innerText = `${playerNames[currentTurnIdx]}さんの番です（文字を引いてください）`;
+            document.getElementById('draw-btn').disabled = false;
+        }
+
+        playerNames.forEach((name, pIdx) => {
+            if (!playerBoards[pIdx]) { playerBoards[pIdx] = Array(maxSlots).fill(""); }
+            else if (playerBoards[pIdx].length !== maxSlots) {
+                const old = playerBoards[pIdx]; playerBoards[pIdx] = Array(maxSlots).fill("");
+                for (let i = 0; i < Math.min(old.length, maxSlots); i++) { playerBoards[pIdx][i] = old[i]; }
+            }
+            if (playerPasses[pIdx] === undefined) { playerPasses[pIdx] = maxPasses; }
+
+            const row = document.createElement('div'); 
+            row.className = 'player-row' + (pIdx === currentTurnIdx ? ' active-turn' : '');
+            
+            const input = document.createElement('input'); input.className = 'player-name'; input.value = name;
+            input.addEventListener('change', (e) => { playerNames[pIdx] = e.target.value; initGame(); });
+            row.appendChild(input);
+
+            const slotsDiv = document.createElement('div'); slotsDiv.className = 'slots';
+            for (let sIdx = 0; sIdx < maxSlots; sIdx++) {
+                const slot = document.createElement('div'); slot.className = 'slot';
+                if (pIdx === currentTurnIdx && currentLetter && !playerBoards[pIdx][sIdx]) slot.className += ' allowed';
+                slot.innerText = playerBoards[pIdx][sIdx] || "";
+                slot.onclick = () => { 
+                    if(pIdx === currentTurnIdx && currentLetter && !playerBoards[pIdx][sIdx]){ 
+                        playerBoards[pIdx][sIdx] = currentLetter; 
+                        nextTurn(); 
+                    } 
+                };
+                slotsDiv.appendChild(slot);
+            }
+            row.appendChild(slotsDiv);
+
+            const passBtn = document.createElement('button'); passBtn.className = 'pass-btn';
+            passBtn.innerText = `パス: ${playerPasses[pIdx]}回`;
+            passBtn.disabled = (pIdx !== currentTurnIdx) || !currentLetter || playerPasses[pIdx] <= 0;
+            passBtn.onclick = () => { playerPasses[pIdx]--; nextTurn(); };
+            row.appendChild(passBtn);
+
+            const remBtn = document.createElement('button'); remBtn.className = 'remove-btn'; remBtn.innerText = '×';
+            remBtn.onclick = () => { 
+                if(playerNames.length > 1){ 
+                    playerNames.splice(pIdx,1); playerBoards.splice(pIdx,1); playerPasses.splice(pIdx,1); 
+                    if (currentTurnIdx >= playerNames.length) currentTurnIdx = 0;
+                    initGame(); 
+                } 
+            };
+            row.appendChild(remBtn);
+            container.appendChild(row);
+        });
+    }
+
+    function nextTurn() {
+        currentTurnIdx = (currentTurnIdx + 1) % playerNames.length;
+        clearLetter();
+    }
+    function changeSlotCount(offset) {
+        const next = maxSlots + offset;
+        if (next >= 3 && next <= 10) { maxSlots = next; document.getElementById('slot-count-display').innerText = maxSlots; initGame(); }
+    }
+    // 画面上で最大パス回数を変更する関数
+    function changeMaxPasses(offset) {
+        const next = maxPasses + offset;
+        if (next >= 0 && next <= 5) { 
+            maxPasses = next; 
+            document.getElementById('pass-count-display').innerText = maxPasses; 
+            // プレイ中の残りパス回数も最大値に合わせて一括更新
+            playerPasses = playerNames.map(() => maxPasses);
+            initGame(); 
+        }
+    }
+    function addPlayer() { playerNames.push("プレイヤー" + (playerNames.length + 1)); playerBoards.push(Array(maxSlots).fill("")); playerPasses.push(maxPasses); initGame(); }
+    function drawLetter() {
+        currentLetter = letters[Math.floor(Math.random() * letters.length)];
+        document.getElementById('drawn-letter-box').innerText = currentLetter;
+        document.getElementById('dakuten-btn').disabled = false;
+        document.getElementById('small-btn').disabled = false;
+        document.getElementById('handakuten-btn').disabled = false;
+        initGame();
+    }
+    function clearLetter() {
+        currentLetter = ""; document.getElementById('drawn-letter-box').innerText = "-";
+        document.getElementById('dakuten-btn').disabled = true; document.getElementById('small-btn').disabled = true; document.getElementById('handakuten-btn').disabled = true;
+        initGame();
+    }
+    function applyModifier(type) {
+        if (!currentLetter) return;
+        const dMap = {'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご','さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ','た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど','は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ'};
+        const hMap = {'は':'ぱ','ひ':'ぴ','ふ':'ぷ','へ':'ぺ','ほ':'ぽ'};
+        const sMap = {'あ':'ぁ','い':'ぃ','う':'ぅ','え':'ぇ','お':'ぉ','つ':'っ','や':'ゃ','ゆ':'ゅ','よ':'ょ'};
+
+        if (type === 'dakuten' && dMap[currentLetter]) currentLetter = dMap[currentLetter];
+        else if (type === 'handakuten' && hMap[currentLetter]) currentLetter = hMap[currentLetter];
+        else if (type === 'small' && sMap[currentLetter]) currentLetter = sMap[currentLetter];
+        document.getElementById('drawn-letter-box').innerText = currentLetter;
+    }
+    function resetGame() { currentTurnIdx = 0; playerBoards = playerNames.map(() => Array(maxSlots).fill("")); playerPasses = playerNames.map(() => maxPasses); clearLetter(); }
+    initGame();
+</script>
+</body>
+</html>
