@@ -53,11 +53,11 @@
     <div class="center-box">
         <div class="drawn-letter" id="drawn-letter-box">-</div>
         <button class="action-btn" id="draw-btn" onclick="drawLetter()">文字を引く</button>
-        <div>
-            <button class="action-btn" style="background:#6c757d" id="dakuten-btn" onclick="applyModifier('dakuten')" disabled>濁点</button>
-            <button class="action-btn" style="background:#6c757d" id="small-btn" onclick="applyModifier('small')" disabled>小文字</button>
-            <button class="action-btn" style="background:#6c757d" id="handakuten-btn" onclick="applyModifier('handakuten')" disabled>半濁点</button>
-            <button class="action-btn" style="background:#17a2b8" id="undo-btn" onclick="undoModifier()" disabled>戻す</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
+            <button class="action-btn" style="background:#6c757d; margin:0;" id="dakuten-btn" onclick="applyModifier('dakuten')" disabled>濁点</button>
+            <button class="action-btn" style="background:#6c757d; margin:0;" id="handakuten-btn" onclick="applyModifier('handakuten')" disabled>半濁点</button>
+            <button class="action-btn" style="background:#6c757d; margin:0;" id="small-btn" onclick="applyModifier('small')" disabled>小文字</button>
+            <button class="action-btn" style="background:#17a2b8; margin:0;" id="undo-btn" onclick="undoModifier()" disabled>戻す</button>
         </div>
     </div>
 </div>
