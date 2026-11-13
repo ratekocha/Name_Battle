@@ -65,6 +65,7 @@
 <script>
     const letters = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわん";
     let currentLetter = "";
+    let baseLetter = "";
     let maxSlots = 7; 
     let maxPasses = 2; 
     let playerNames = ["", "", "", "", ""];
@@ -171,25 +172,32 @@
     function addPlayer() { playerNames.push(""); playerBoards.push(Array(maxSlots).fill("")); playerPasses.push(maxPasses); initGame(); }
     function drawLetter() {
         currentLetter = letters[Math.floor(Math.random() * letters.length)];
+        baseLetter = currentLetter;
         document.getElementById('drawn-letter-box').innerText = currentLetter;
         document.getElementById('dakuten-btn').disabled = false;
         document.getElementById('small-btn').disabled = false;
         document.getElementById('handakuten-btn').disabled = false;
+        document.getElementById('undo-btn').disabled = false;
         initGame();
     }
     function clearLetter() {
-        currentLetter = ""; document.getElementById('drawn-letter-box').innerText = "-";
-        document.getElementById('dakuten-btn').disabled = true; document.getElementById('small-btn').disabled = true; document.getElementById('handakuten-btn').disabled = true;
+        currentLetter = ""; baseLetter = ""; document.getElementById('drawn-letter-box').innerText = "-";
+        document.getElementById('dakuten-btn').disabled = true; document.getElementById('small-btn').disabled = true; document.getElementById('handakuten-btn').disabled = true; document.getElementById('undo-btn').disabled = true;
         initGame();
     }
     function applyModifier(type) {
-        if (!currentLetter) return;
+        if (!baseLetter) return;
         const dMap = {'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご','さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ','た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど','は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ'};
         const hMap = {'は':'ぱ','ひ':'ぴ','ふ':'ぷ','へ':'ぺ','ほ':'ぽ'};
         const sMap = {'あ':'ぁ','い':'ぃ','う':'ぅ','え':'ぇ','お':'ぉ','つ':'っ','や':'ゃ','ゆ':'ゅ','よ':'ょ'};
-        if (type === 'dakuten' && dMap[currentLetter]) currentLetter = dMap[currentLetter];
-        else if (type === 'handakuten' && hMap[currentLetter]) currentLetter = hMap[currentLetter];
-        else if (type === 'small' && sMap[currentLetter]) currentLetter = sMap[currentLetter];
+        if (type === 'dakuten' && dMap[baseLetter]) currentLetter = dMap[baseLetter];
+        else if (type === 'handakuten' && hMap[baseLetter]) currentLetter = hMap[baseLetter];
+        else if (type === 'small' && sMap[baseLetter]) currentLetter = sMap[baseLetter];
+        document.getElementById('drawn-letter-box').innerText = currentLetter;
+    }
+    function undoModifier() {
+        if (!baseLetter) return;
+        currentLetter = baseLetter;
         document.getElementById('drawn-letter-box').innerText = currentLetter;
     }
     function resetGame() { currentTurnIdx = 0; playerBoards = playerNames.map(() => Array(maxSlots).fill("")); playerPasses = playerNames.map(() => maxPasses); clearLetter(); }
